@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFT ZONIX</title>
+  <meta name="description" content="NFT ZONIX - NFT пиксельная стена для Telegram-каналов и аккаунтов. Топ сайтов Telegram 2025!" />
+  <meta name="keywords" content="NFT, Telegram, NFT ZONIX, топ сайты Telegram 2025" />
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tonconnect/ui@1.0.0/dist/tonconnect-ui.min.js"></script>
+</head>
+<body>
+  <div id="controls">
+    <button id="connect-ton">Подключить TON Wallet</button>
+    <button id="select-mode-btn">Выделение: выкл</button>
+    <button id="clear-selection-btn">Очистить выделение</button>
+    <button id="buy-selected-btn">Купить выделенное</button>
+    <button id="gift-selected-btn">Подарить выделенное</button>
+    <select id="filter-category">
+      <option value="">Все категории</option>
+      <option value="Крипта">Крипта</option>
+      <option value="Спорт">Спорт</option>
+      <option value="Игры">Игры</option>
+      <option value="Развлечения">Развлечения</option>
+      <option value="Бизнес">Бизнес</option>
+    </select>
+  </div>
+  <div id="zoom-controls">
+    <button id="zoom-in">Увеличить</button>
+    <button id="zoom-out">Уменьшить</button>
+  </div>
+  <div id="pixel-wrapper">
+    <div id="pixel-grid"></div>
+  </div>
+  <div id="purchase-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Купить блок #<span id="purchase-id"></span></h2>
+      <p>Цена: <span id="purchase-price"></span> TON</p>
+      <select id="category-select">
+        <option value="">Выберите категорию</option>
+        <option value="Крипта">Крипта</option>
+        <option value="Спорт">Спорт</option>
+        <option value="Игры">Игры</option>
+        <option value="Развлечения">Развлечения</option>
+        <option value="Бизнес">Бизнес</option>
+      </select>
+      <div id="category-help">Нужно для каталогизации</div>
+      <input type="file" id="pixel-image" accept="image/*,.gif" style="display: none;" />
+      <input id="purchase-username" placeholder="@username или @channel" style="display: none;" />
+      <div id="gift-actions" style="display: none; justify-content: space-between;">
+        <button id="confirm-gift">Подарить</button>
+        <button id="cancel-gift">Отмена</button>
+      </div>
+      <div class="modal-footer">
+        <button id="purchase-self">Купить</button>
+        <button id="purchase-gift">Подарить</button>
+        <button id="purchase-close">Закрыть</button>
+      </div>
+    </div>
+  </div>
+  <div id="view-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Блок #<span id="view-id"></span></h2>
+      <p>Владелец: <a id="view-owner" href="#" target="_blank">?</a></p>
+      <p>Категория: <span id="view-category">Не указана</span></p>
+      <p>Дата: <span id="view-date">?</span></p>
+      <div id="view-price-wrap" class="hidden">
+        <p>Цена: <span id="view-price">?</span> TON</p>
+      </div>
+      <div class="modal-footer">
+        <button id="view-close">Закрыть</button>
+        <button id="sell-pixel" style="display: none;">Продать</button>
+      </div>
+    </div>
+  </div>
+  <div id="confirm-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2><span id="confirm-message"></span></h2>
+      <p><span id="confirm-price"></span></p>
+      <input id="confirm-username" placeholder="@username или @channel" style="display: none;" />
+      <div class="modal-footer">
+        <button id="confirm-yes">Да</button>
+        <button id="confirm-no">Нет</button>
+        <button id="confirm-close">Закрыть</button>
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
