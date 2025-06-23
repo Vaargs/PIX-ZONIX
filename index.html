@@ -1,19 +1,14 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NFT ZONIX</title>
-  <meta name="description" content="NFT ZONIX - NFT пиксельная стена для Telegram-каналов и аккаунтов. Топ сайтов Telegram 2025!" />
-  <meta name="keywords" content="NFT, Telegram, NFT ZONIX, топ сайты Telegram 2025" />
-  <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tonconnect/ui@1.0.0/dist/tonconnect-ui.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PIX-ZONIX</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="controls">
-    <button id="connect-ton">Подключить TON Wallet</button>
     <button id="select-mode-btn">Выделение: выкл</button>
     <button id="clear-selection-btn">Очистить выделение</button>
     <button id="buy-selected-btn">Купить выделенное</button>
@@ -26,67 +21,78 @@
       <option value="Развлечения">Развлечения</option>
       <option value="Бизнес">Бизнес</option>
     </select>
+    <input id="filter-owner" type="text" placeholder="Фильтр по владельцу (@username)">
   </div>
   <div id="zoom-controls">
-    <button id="zoom-in">Увеличить</button>
-    <button id="zoom-out">Уменьшить</button>
+    <button id="zoom-in">+</button>
+    <button id="zoom-out">-</button>
   </div>
   <div id="pixel-wrapper">
     <div id="pixel-grid"></div>
   </div>
   <div id="purchase-modal" class="modal hidden">
     <div class="modal-content">
-      <h2>Купить блок #<span id="purchase-id"></span></h2>
+      <span class="modal-close" id="purchase-close">×</span>
+      <h2>Покупка блока</h2>
+      <p>Блок: <span id="purchase-id"></span></p>
       <p>Цена: <span id="purchase-price"></span> TON</p>
       <select id="category-select">
-        <option value="">Выберите категорию</option>
         <option value="Крипта">Крипта</option>
         <option value="Спорт">Спорт</option>
         <option value="Игры">Игры</option>
         <option value="Развлечения">Развлечения</option>
         <option value="Бизнес">Бизнес</option>
       </select>
-      <div id="category-help">Нужно для каталогизации</div>
-      <input type="file" id="pixel-image" accept="image/*,.gif" style="display: none;" />
-      <input id="purchase-username" placeholder="@username или @channel" style="display: none;" />
-      <div id="gift-actions" style="display: none; justify-content: space-between;">
-        <button id="confirm-gift">Подарить</button>
-        <button id="cancel-gift">Отмена</button>
-      </div>
+      <input type="text" id="purchase-username" placeholder="@username или @channel" style="display: none;">
       <div class="modal-footer">
-        <button id="purchase-self">Купить</button>
+        <button id="purchase-self">Купить себе</button>
         <button id="purchase-gift">Подарить</button>
-        <button id="purchase-close">Закрыть</button>
+      </div>
+      <div id="gift-actions" style="display: none;">
+        <button id="confirm-gift">Подтвердить</button>
+        <button id="cancel-gift">Отмена</button>
       </div>
     </div>
   </div>
   <div id="view-modal" class="modal hidden">
     <div class="modal-content">
-      <h2>Блок #<span id="view-id"></span></h2>
-      <p>Владелец: <a id="view-owner" href="#" target="_blank">?</a></p>
-      <p>Категория: <span id="view-category">Не указана</span></p>
-      <p>Дата: <span id="view-date">?</span></p>
-      <div id="view-price-wrap" class="hidden">
-        <p>Цена: <span id="view-price">?</span> TON</p>
-      </div>
+      <span class="modal-close" id="view-close">×</span>
+      <h2>Информация о блоке</h2>
+      <p>Блок: <span id="view-id"></span></p>
+      <p>Владелец: <a id="view-owner" href="#" target="_blank"></a></p>
+      <p>Категория: <span id="view-category"></span></p>
+      <p>Дата покупки: <span id="view-date"></span></p>
+      <p id="view-price-wrap" class="hidden">Цена продажи: <span id="view-price"></span> TON</p>
       <div class="modal-footer">
-        <button id="view-close">Закрыть</button>
-        <button id="sell-pixel" style="display: none;">Продать</button>
+        <button id="sell-pixel">Продать</button>
       </div>
     </div>
   </div>
   <div id="confirm-modal" class="modal hidden">
     <div class="modal-content">
-      <h2><span id="confirm-message"></span></h2>
-      <p><span id="confirm-price"></span></p>
-      <input id="confirm-username" placeholder="@username или @channel" style="display: none;" />
+      <span class="modal-close" id="confirm-close">×</span>
+      <h2>Подтверждение</h2>
+      <p id="confirm-message"></p>
+      <p id="confirm-price"></p>
+      <input type="text" id="confirm-username" placeholder="@username или @channel" style="display: none;">
       <div class="modal-footer">
         <button id="confirm-yes">Да</button>
         <button id="confirm-no">Нет</button>
-        <button id="confirm-close">Закрыть</button>
       </div>
     </div>
   </div>
+  <div id="editor-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Редактировать изображение</h2>
+      <input type="file" id="editor-image-upload" accept="image/*">
+      <canvas id="editor-canvas"></canvas>
+      <div class="modal-footer">
+        <button id="editor-save">Сохранить</button>
+        <button id="editor-cancel">Отмена</button>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/6.0.3/fabric.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

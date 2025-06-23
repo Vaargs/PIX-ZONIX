@@ -77,6 +77,8 @@ button:hover {
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
+  background-size: cover;
 }
 
 .pixel.taken {
@@ -136,26 +138,77 @@ button:hover {
   gap: 10px;
 }
 
-/* Анимация взрыва при покупке */
 .star-explosion {
   animation: star-explosion 0.8s ease-out forwards;
 }
 
 @keyframes star-explosion {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 rgba(255, 215, 0, 0.5);
-  }
-  50% {
-    transform: scale(1.5);
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
-    background-color: #FFD700;
-    border-radius: 50%;
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 rgba(255, 215, 0, 0);
-    background-color: #444;
-    border-radius: 0;
-  }
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(255, 215, 0, 0.5); }
+  50% { transform: scale(1.5); box-shadow: 0 0 20px rgba(255, 215, 0, 0.8); background-color: #FFD700; border-radius: 50%; }
+  100% { transform: scale(1); box-shadow: 0 0 0 rgba(255, 215, 0, 0); background-color: #444; border-radius: 0; }
+}
+
+.gift-box {
+  animation: gift-box 1s ease-out forwards;
+  position: relative;
+}
+
+@keyframes gift-box {
+  0% { transform: scale(1); background-color: #444; box-shadow: 0 0 0 rgba(255, 105, 180, 0.5); }
+  50% { transform: scale(1.8); background-color: #FF69B4; box-shadow: 0 0 15px rgba(255, 105, 180, 0.8); border-radius: 10%; }
+  100% { transform: scale(1); background-color: #222; box-shadow: 0 0 0 rgba(255, 105, 180, 0); border-radius: 0; }
+}
+
+.gift-box::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 2px;
+  background: linear-gradient(90deg, #FFD700, #FF4500);
+  transform: translate(-50%, -50%) rotate(45deg);
+  animation: ribbon 1s ease-out;
+}
+
+.gift-box::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 2px;
+  background: linear-gradient(90deg, #FFD700, #FF4500);
+  transform: translate(-50%, -50%) rotate(-45deg);
+  animation: ribbon 1s ease-out;
+}
+
+@keyframes ribbon {
+  0% { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) rotate(45deg) scale(1.5); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(45deg) scale(0); }
+}
+
+.gift-box .confetti {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #FF69B4;
+  border-radius: 50%;
+  animation: confetti 1s ease-out forwards;
+}
+
+.gift-box .confetti:nth-child(2) { animation-delay: 0.1s; background: #FFD700; }
+.gift-box .confetti:nth-child(3) { animation-delay: 0.2s; background: #00CED1; }
+.gift-box .confetti:nth-child(4) { animation-delay: 0.3s; background: #FF4500; }
+
+@keyframes confetti {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(0.5); }
+}
+
+#editor-canvas {
+  border: 1px solid #00D4FF;
+  margin: 10px 0;
+  background: #444;
 }
