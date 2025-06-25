@@ -1,4 +1,51 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.getElementById('purchase-self').onclick = async () => {
+    const id = parseInt(document.getElementById('purchase-id').textContent);
+    const category = document.getElementById('category-select').value;
+    const shouldMerge = document.getElementById('merge-checkbox')?.checked || false;
+    const owner = defaultOwner;
+    
+    // Рассчитываем цену с учетом объединения
+    let totalPrice = pixelData[id]?.salePrice || defaultPrice;
+    if (shouldMerge) {
+      const mergeOpp = checkMergeOpportunities(id, owner);
+      if (mergeOpp.canMerge) {
+        totalPrice += mergeOpp.cost;
+      }
+    }
+    
+    await buyPixel(id, totalPrice);
+    const pixel = document.querySelector(`.pixel[data-id='${id}']`);
+    if (pixel) {
+      pixel.classList.add('taken', 'owner-group');
+      pixel.classList.add('star-explosion');
+      setTimeout(() => pixel.classList.remove('star-explosion'), 800);
+    }
+    
+    pixelData[id] = {
+      ...pixelData[id],
+      category: category,
+      taken: true,
+      owner: owner,
+      date: new Date().toLocaleString()
+    };
+    
+    // Обрабатываем объединение
+    if (shouldMerge) {
+      const neighbors = getOwnerNeighbors(id, owner);
+      const allPixels = [id, ...neighbors];
+      const groupId = createOrUpdateGroup(allPixels, owner);
+      
+      setTimeout(() => {
+        mergePixelGroup(groupId);
+      }, 1000);
+    }
+    
+    localStorage.setItem('pixelData', JSON.stringify(pixelData));
+    closeAllModals();
+    
+    // Показываем сообщение о возможности загрузки изображения
+    alert('🎉 Пиксель куплен! Теперь вы можете загрузить картинку в купленные пиксели через двойной клик или кнопку "Редактор".');
+  };document.addEventListener('DOMContentLoaded', () => {
   const grid = document.getElementById("pixel-grid");
   const wrapper = document.getElementById("pixel-wrapper");
   const gridSize = 50;
@@ -64,34 +111,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function initImageEditor(canvasWidth, canvasHeight) {
     const canvas = document.getElementById('editor-canvas');
+    if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
     
-    canvas.width = Math.min(canvasWidth, 400);
-    canvas.height = Math.min(canvasHeight, 400);
+    const displayWidth = Math.min(canvasWidth, 400);
+    const displayHeight = Math.min(canvasHeight, 400);
+    
+    canvas.width = displayWidth;
+    canvas.height = displayHeight;
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
     
     // Очищаем канвас
     ctx.fillStyle = '#2A3D5A';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, displayWidth, displayHeight);
     
     // Рисуем сетку
-    ctx.strokeStyle = '#00D4FF';
-    ctx.lineWidth = 0.5;
-    const cellWidth = canvas.width / (Math.max(...selectedPixelsForImage.map(id => id % gridSize)) - Math.min(...selectedPixelsForImage.map(id => id % gridSize)) + 1);
-    const cellHeight = canvas.height / (Math.max(...selectedPixelsForImage.map(id => Math.floor(id / gridSize))) - Math.min(...selectedPixelsForImage.map(id => Math.floor(id / gridSize))) + 1);
-    
-    for (let x = 0; x <= canvas.width; x += cellWidth) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-    
-    for (let y = 0; y <= canvas.height; y += cellHeight) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
+    drawGrid(ctx, displayWidth, displayHeight);
     
     imageEditor = {
       canvas: canvas,
@@ -101,11 +138,122 @@ document.addEventListener('DOMContentLoaded', () => {
       offsetX: 0,
       offsetY: 0,
       isDragging: false,
+      isResizing: false,
       lastX: 0,
-      lastY: 0
+      lastY: 0,
+      displayWidth: displayWidth,
+      displayHeight: displayHeight,
+      imageWidth: 0,
+      imageHeight: 0
     };
     
     setupImageEditorEvents();
+    createPreview();
+  }
+
+  function drawGrid(ctx, width, height) {
+    ctx.strokeStyle = '#00D4FF';
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.8;
+    
+    const cols = Math.max(...selectedPixelsForImage.map(id => id % gridSize)) - Math.min(...selectedPixelsForImage.map(id => id % gridSize)) + 1;
+    const rows = Math.max(...selectedPixelsForImage.map(id => Math.floor(id / gridSize))) - Math.min(...selectedPixelsForImage.map(id => Math.floor(id / gridSize))) + 1;
+    
+    const cellWidth = width / cols;
+    const cellHeight = height / rows;
+    
+    for (let x = 0; x <= width; x += cellWidth) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    
+    for (let y = 0; y <= height; y += cellHeight) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+    
+    ctx.globalAlpha = 1;
+  }
+
+  function createPreview() {
+    const previewContainer = document.getElementById('editor-preview');
+    previewContainer.innerHTML = '';
+    
+    const cols = Math.max(...selectedPixelsForImage.map(id => id % gridSize)) - Math.min(...selectedPixelsForImage.map(id => id % gridSize)) + 1;
+    const rows = Math.max(...selectedPixelsForImage.map(id => Math.floor(id / gridSize))) - Math.min(...selectedPixelsForImage.map(id => Math.floor(id / gridSize))) + 1;
+    
+    previewContainer.style.display = 'grid';
+    previewContainer.style.gridTemplateColumns = `repeat(${cols}, 12px)`;
+    previewContainer.style.gridTemplateRows = `repeat(${rows}, 12px)`;
+    previewContainer.style.gap = '1px';
+    previewContainer.style.margin = '10px auto';
+    previewContainer.style.width = 'fit-content';
+    previewContainer.style.border = '1px solid #00D4FF';
+    previewContainer.style.padding = '2px';
+    previewContainer.style.borderRadius = '4px';
+    
+    const minRow = Math.min(...selectedPixelsForImage.map(id => Math.floor(id / gridSize)));
+    const minCol = Math.min(...selectedPixelsForImage.map(id => id % gridSize));
+    
+    selectedPixelsForImage.forEach(pixelId => {
+      const row = Math.floor(pixelId / gridSize) - minRow;
+      const col = (pixelId % gridSize) - minCol;
+      
+      const previewPixel = document.createElement('div');
+      previewPixel.style.width = '12px';
+      previewPixel.style.height = '12px';
+      previewPixel.style.backgroundColor = '#444';
+      previewPixel.style.border = '0.5px solid #00D4FF';
+      previewPixel.dataset.row = row;
+      previewPixel.dataset.col = col;
+      previewPixel.dataset.id = pixelId;
+      
+      previewContainer.appendChild(previewPixel);
+    });
+  }
+
+  function updatePreview() {
+    if (!imageEditor || !imageEditor.image) return;
+    
+    const canvas = imageEditor.canvas;
+    const cols = Math.max(...selectedPixelsForImage.map(id => id % gridSize)) - Math.min(...selectedPixelsForImage.map(id => id % gridSize)) + 1;
+    const rows = Math.max(...selectedPixelsForImage.map(id => Math.floor(id / gridSize))) - Math.min(...selectedPixelsForImage.map(id => Math.floor(id / gridSize))) + 1;
+    
+    const cellWidth = canvas.width / cols;
+    const cellHeight = canvas.height / rows;
+    
+    // Создаем временный canvas для предпросмотра
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCanvas.width = cellWidth;
+    tempCanvas.height = cellHeight;
+    
+    const previewPixels = document.querySelectorAll('#editor-preview div');
+    
+    previewPixels.forEach(previewPixel => {
+      const row = parseInt(previewPixel.dataset.row);
+      const col = parseInt(previewPixel.dataset.col);
+      
+      // Очищаем временный canvas
+      tempCtx.clearRect(0, 0, cellWidth, cellHeight);
+      
+      // Копируем часть основного canvas
+      tempCtx.drawImage(
+        canvas,
+        col * cellWidth, row * cellHeight, cellWidth, cellHeight,
+        0, 0, cellWidth, cellHeight
+      );
+      
+      // Применяем к preview пикселю
+      const imageData = tempCanvas.toDataURL('image/png');
+      previewPixel.style.backgroundImage = `url(${imageData})`;
+      previewPixel.style.backgroundSize = 'cover';
+      previewPixel.style.backgroundPosition = 'center';
+    });
   }
 
   function setupImageEditorEvents() {
@@ -120,8 +268,16 @@ document.addEventListener('DOMContentLoaded', () => {
           const img = new Image();
           img.onload = () => {
             imageEditor.image = img;
-            fitImageToCanvas();
+            imageEditor.imageWidth = img.width;
+            imageEditor.imageHeight = img.height;
+            
+            // Позиционируем изображение в центре
+            imageEditor.offsetX = (canvas.width - img.width) / 2;
+            imageEditor.offsetY = (canvas.height - img.height) / 2;
+            imageEditor.scale = 1;
+            
             redrawCanvas();
+            updatePreview();
           };
           img.src = event.target.result;
         };
@@ -129,50 +285,85 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
     
-    // Drag events
+    // Mouse events
     canvas.addEventListener('mousedown', (e) => {
       if (!imageEditor.image) return;
-      imageEditor.isDragging = true;
-      const rect = canvas.getBoundingClientRect();
-      imageEditor.lastX = e.clientX - rect.left;
-      imageEditor.lastY = e.clientY - rect.top;
-    });
-    
-    canvas.addEventListener('mousemove', (e) => {
-      if (!imageEditor.isDragging || !imageEditor.image) return;
+      
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       
-      imageEditor.offsetX += x - imageEditor.lastX;
-      imageEditor.offsetY += y - imageEditor.lastY;
+      // Проверяем, находится ли курсор в углу изображения для изменения размера
+      const imgRight = imageEditor.offsetX + imageEditor.imageWidth * imageEditor.scale;
+      const imgBottom = imageEditor.offsetY + imageEditor.imageHeight * imageEditor.scale;
+      
+      if (x > imgRight - 10 && x < imgRight + 10 && y > imgBottom - 10 && y < imgBottom + 10) {
+        imageEditor.isResizing = true;
+        canvas.style.cursor = 'nw-resize';
+      } else {
+        imageEditor.isDragging = true;
+        canvas.style.cursor = 'grabbing';
+      }
       
       imageEditor.lastX = x;
       imageEditor.lastY = y;
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+      if (!imageEditor.image) return;
       
-      redrawCanvas();
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      if (imageEditor.isResizing) {
+        const deltaX = x - imageEditor.lastX;
+        const deltaY = y - imageEditor.lastY;
+        
+        // Изменяем масштаб пропорционально
+        const scaleDelta = Math.max(deltaX, deltaY) / 100;
+        imageEditor.scale = Math.max(0.1, Math.min(imageEditor.scale + scaleDelta, 5));
+        
+        imageEditor.lastX = x;
+        imageEditor.lastY = y;
+        
+        redrawCanvas();
+        updatePreview();
+        
+      } else if (imageEditor.isDragging) {
+        imageEditor.offsetX += x - imageEditor.lastX;
+        imageEditor.offsetY += y - imageEditor.lastY;
+        
+        imageEditor.lastX = x;
+        imageEditor.lastY = y;
+        
+        redrawCanvas();
+        updatePreview();
+        
+      } else {
+        // Показываем курсор изменения размера в углу
+        const imgRight = imageEditor.offsetX + imageEditor.imageWidth * imageEditor.scale;
+        const imgBottom = imageEditor.offsetY + imageEditor.imageHeight * imageEditor.scale;
+        
+        if (x > imgRight - 10 && x < imgRight + 10 && y > imgBottom - 10 && y < imgBottom + 10) {
+          canvas.style.cursor = 'nw-resize';
+        } else {
+          canvas.style.cursor = 'grab';
+        }
+      }
     });
     
     canvas.addEventListener('mouseup', () => {
       imageEditor.isDragging = false;
-    });
-    
-    // Zoom events
-    canvas.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      if (!imageEditor.image) return;
-      
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      imageEditor.scale *= delta;
-      imageEditor.scale = Math.max(0.1, Math.min(imageEditor.scale, 5));
-      
-      redrawCanvas();
+      imageEditor.isResizing = false;
+      canvas.style.cursor = 'grab';
     });
     
     // Touch events для мобильных
     canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
       if (!imageEditor.image) return;
+      
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
       imageEditor.isDragging = true;
@@ -183,6 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (!imageEditor.isDragging || !imageEditor.image) return;
+      
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
       const x = touch.clientX - rect.left;
@@ -195,10 +387,48 @@ document.addEventListener('DOMContentLoaded', () => {
       imageEditor.lastY = y;
       
       redrawCanvas();
+      updatePreview();
     });
     
     canvas.addEventListener('touchend', () => {
       imageEditor.isDragging = false;
+    });
+    
+    // Pinch to zoom для мобильных
+    let lastTouchDistance = 0;
+    
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        lastTouchDistance = Math.sqrt(
+          Math.pow(touch2.clientX - touch1.clientX, 2) + 
+          Math.pow(touch2.clientY - touch1.clientY, 2)
+        );
+      }
+    });
+    
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && imageEditor.image) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = Math.sqrt(
+          Math.pow(touch2.clientX - touch1.clientX, 2) + 
+          Math.pow(touch2.clientY - touch1.clientY, 2)
+        );
+        
+        if (lastTouchDistance > 0) {
+          const scaleFactor = currentDistance / lastTouchDistance;
+          imageEditor.scale *= scaleFactor;
+          imageEditor.scale = Math.max(0.1, Math.min(imageEditor.scale, 5));
+          
+          redrawCanvas();
+          updatePreview();
+        }
+        
+        lastTouchDistance = currentDistance;
+      }
     });
   }
 
@@ -233,38 +463,21 @@ document.addEventListener('DOMContentLoaded', () => {
         imageEditor.image,
         imageEditor.offsetX,
         imageEditor.offsetY,
-        imageEditor.image.width * imageEditor.scale,
-        imageEditor.image.height * imageEditor.scale
+        imageEditor.imageWidth * imageEditor.scale,
+        imageEditor.imageHeight * imageEditor.scale
       );
       ctx.restore();
+      
+      // Рисуем ручку изменения размера
+      const imgRight = imageEditor.offsetX + imageEditor.imageWidth * imageEditor.scale;
+      const imgBottom = imageEditor.offsetY + imageEditor.imageHeight * imageEditor.scale;
+      
+      ctx.fillStyle = '#00D4FF';
+      ctx.fillRect(imgRight - 5, imgBottom - 5, 10, 10);
     }
     
     // Рисуем сетку поверх изображения
-    ctx.strokeStyle = '#00D4FF';
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.8;
-    
-    const cols = Math.max(...selectedPixelsForImage.map(id => id % gridSize)) - Math.min(...selectedPixelsForImage.map(id => id % gridSize)) + 1;
-    const rows = Math.max(...selectedPixelsForImage.map(id => Math.floor(id / gridSize))) - Math.min(...selectedPixelsForImage.map(id => Math.floor(id / gridSize))) + 1;
-    
-    const cellWidth = canvas.width / cols;
-    const cellHeight = canvas.height / rows;
-    
-    for (let x = 0; x <= canvas.width; x += cellWidth) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-    
-    for (let y = 0; y <= canvas.height; y += cellHeight) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-    
-    ctx.globalAlpha = 1;
+    drawGrid(ctx, canvas.width, canvas.height);
   }
 
   function sliceImageToPixels() {
@@ -785,7 +998,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const now = new Date().toLocaleString();
-    const owner = mode === 'gift' ? username : (tonConnectUI.wallet?.account?.address || defaultOwner);
+    const owner = mode === 'gift' ? username : defaultOwner;
     
     // Покупаем каждый пиксель по очереди
     for (const id of selectedPixels) {
@@ -831,8 +1044,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const p = document.querySelector(`.pixel[data-id='${id}']`);
       if (p) p.classList.remove('selected');
     });
+    
+    const pixelCount = selectedPixels.length;
     selectedPixels = [];
     closeAllModals();
+    
+    // Показываем сообщение о возможности загрузки изображения
+    alert(`🎉 ${pixelCount} ${pixelCount === 1 ? 'пиксель куплен' : 'пикселей куплено'}! Теперь вы можете загрузить картинку в купленные пиксели через кнопку "Редактор изображения".`);
   };
 
   document.getElementById('confirm-no').onclick = closeAllModals;
@@ -843,8 +1061,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('editor-save').onclick = sliceImageToPixels;
   document.getElementById('editor-reset').onclick = () => {
     if (imageEditor && imageEditor.image) {
-      fitImageToCanvas();
+      // Сбрасываем к оригинальному размеру
+      imageEditor.scale = 1;
+      imageEditor.offsetX = (imageEditor.canvas.width - imageEditor.imageWidth) / 2;
+      imageEditor.offsetY = (imageEditor.canvas.height - imageEditor.imageHeight) / 2;
       redrawCanvas();
+      updatePreview();
     }
   };
 

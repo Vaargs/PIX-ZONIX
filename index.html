@@ -61,11 +61,6 @@
         </div>
       </div>
       
-      <input type="file" id="pixel-image" accept="image/*,.gif" style="display: none;" />
-      <button onclick="document.getElementById('pixel-image').click()" style="background: #444; margin: 5px 0;">
-        📁 Выбрать изображение
-      </button>
-      
       <input id="purchase-username" placeholder="@username или @channel" style="display: none;" />
       <div id="gift-actions" style="display: none; justify-content: space-between;">
         <button id="confirm-gift">Подарить</button>
@@ -133,17 +128,25 @@
       
       <div style="display: flex; gap: 8px; margin-bottom: 15px;">
         <button id="editor-reset" style="flex: 1; background: #444;">🔄 Сброс</button>
-        <button onclick="if(imageEditor && imageEditor.image) { imageEditor.scale *= 1.2; redrawCanvas(); }" style="flex: 1; background: #444;">🔍+ Увеличить</button>
-        <button onclick="if(imageEditor && imageEditor.image) { imageEditor.scale *= 0.8; redrawCanvas(); }" style="flex: 1; background: #444;">🔍- Уменьшить</button>
+        <button onclick="if(imageEditor && imageEditor.image) { imageEditor.scale *= 1.2; redrawCanvas(); updatePreview(); }" style="flex: 1; background: #444;">🔍+ Увеличить</button>
+        <button onclick="if(imageEditor && imageEditor.image) { imageEditor.scale *= 0.8; redrawCanvas(); updatePreview(); }" style="flex: 1; background: #444;">🔍- Уменьшить</button>
+      </div>
+      
+      <!-- Предпросмотр в реальном времени -->
+      <div style="background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+        <div style="text-align: center; font-size: 12px; color: #00D4FF; margin-bottom: 8px;">
+          📱 Предпросмотр результата:
+        </div>
+        <div id="editor-preview" style="margin: 0 auto;"></div>
       </div>
       
       <div style="background: rgba(0, 212, 255, 0.1); padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">
-        <strong>💡 Как использовать:</strong><br>
-        • Загрузите изображение кнопкой выше<br>
-        • Перетаскивайте мышью для позиционирования<br>
-        • Колесико мыши для масштабирования<br>
-        • Сетка показывает границы блоков<br>
-        • Нажмите "Применить" для сохранения
+        <strong>💡 Управление:</strong><br>
+        • Перетаскивайте изображение мышью<br>
+        • Тяните за синий квадрат в углу для изменения размера<br>
+        • Колесико мыши для точного масштабирования<br>
+        • На мобильных: pinch-to-zoom для масштаба<br>
+        • Предпросмотр показывает финальный результат
       </div>
       
       <div class="modal-footer">
