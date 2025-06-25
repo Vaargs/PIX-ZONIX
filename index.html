@@ -1,18 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PIX-ZONIX</title>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFT ZONIX</title>
+  <meta name="description" content="NFT ZONIX - NFT пиксельная стена для Telegram-каналов и аккаунтов. Топ сайтов Telegram 2025!" />
+  <meta name="keywords" content="NFT, Telegram, NFT ZONIX, топ сайты Telegram 2025" />
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tonconnect/ui@1.0.0/dist/tonconnect-ui.min.js"></script>
 </head>
 <body>
   <div id="controls">
+    <button id="connect-ton">Подключить TON Wallet</button>
     <button id="select-mode-btn">Выделение: выкл</button>
     <button id="clear-selection-btn">Очистить выделение</button>
     <button id="buy-selected-btn">Купить выделенное</button>
     <button id="gift-selected-btn">Подарить выделенное</button>
+    <button id="edit-image-btn">🖼️ Редактор изображения</button>
     <select id="filter-category">
       <option value="">Все категории</option>
       <option value="Крипта">Крипта</option>
@@ -21,78 +27,131 @@
       <option value="Развлечения">Развлечения</option>
       <option value="Бизнес">Бизнес</option>
     </select>
-    <input id="filter-owner" type="text" placeholder="Фильтр по владельцу (@username)">
   </div>
   <div id="zoom-controls">
-    <button id="zoom-in">+</button>
-    <button id="zoom-out">-</button>
+    <button id="zoom-in">Увеличить</button>
+    <button id="zoom-out">Уменьшить</button>
   </div>
   <div id="pixel-wrapper">
     <div id="pixel-grid"></div>
   </div>
   <div id="purchase-modal" class="modal hidden">
     <div class="modal-content">
-      <span class="modal-close" id="purchase-close">×</span>
-      <h2>Покупка блока</h2>
-      <p>Блок: <span id="purchase-id"></span></p>
+      <h2>Купить блок #<span id="purchase-id"></span></h2>
       <p>Цена: <span id="purchase-price"></span> TON</p>
       <select id="category-select">
+        <option value="">Выберите категорию</option>
         <option value="Крипта">Крипта</option>
         <option value="Спорт">Спорт</option>
         <option value="Игры">Игры</option>
         <option value="Развлечения">Развлечения</option>
         <option value="Бизнес">Бизнес</option>
       </select>
-      <input type="text" id="purchase-username" placeholder="@username или @channel" style="display: none;">
-      <div class="modal-footer">
-        <button id="purchase-self">Купить себе</button>
-        <button id="purchase-gift">Подарить</button>
+      <div id="category-help">Нужно для каталогизации</div>
+      
+      <!-- Новая секция для объединения пикселей -->
+      <div id="merge-section" style="display: none; border: 1px solid #00D4FF; padding: 10px; margin: 10px 0; border-radius: 4px;">
+        <label style="display: flex; align-items: center; gap: 8px; color: #00D4FF;">
+          <input type="checkbox" id="merge-checkbox" />
+          <span>Объединить с соседними блоками</span>
+        </label>
+        <div id="merge-info" style="font-size: 12px; color: #aaa; margin-top: 5px;"></div>
+        <div style="font-size: 11px; color: #888; margin-top: 5px;">
+          ✨ Границы исчезнут, изображение растянется на всю область
+        </div>
       </div>
-      <div id="gift-actions" style="display: none;">
-        <button id="confirm-gift">Подтвердить</button>
+      
+      <input type="file" id="pixel-image" accept="image/*,.gif" style="display: none;" />
+      <button onclick="document.getElementById('pixel-image').click()" style="background: #444; margin: 5px 0;">
+        📁 Выбрать изображение
+      </button>
+      
+      <input id="purchase-username" placeholder="@username или @channel" style="display: none;" />
+      <div id="gift-actions" style="display: none; justify-content: space-between;">
+        <button id="confirm-gift">Подарить</button>
         <button id="cancel-gift">Отмена</button>
+      </div>
+      <div class="modal-footer">
+        <button id="purchase-self">Купить</button>
+        <button id="purchase-gift">Подарить</button>
+        <button id="purchase-close">Закрыть</button>
       </div>
     </div>
   </div>
   <div id="view-modal" class="modal hidden">
     <div class="modal-content">
-      <span class="modal-close" id="view-close">×</span>
-      <h2>Информация о блоке</h2>
-      <p>Блок: <span id="view-id"></span></p>
-      <p>Владелец: <a id="view-owner" href="#" target="_blank"></a></p>
-      <p>Категория: <span id="view-category"></span></p>
-      <p>Дата покупки: <span id="view-date"></span></p>
-      <p id="view-price-wrap" class="hidden">Цена продажи: <span id="view-price"></span> TON</p>
+      <h2>Блок #<span id="view-id"></span></h2>
+      <p>Владелец: <a id="view-owner" href="#" target="_blank">?</a></p>
+      <p>Категория: <span id="view-category">Не указана</span></p>
+      <p>Дата: <span id="view-date">?</span></p>
+      
+      <!-- Информация о группе -->
+      <div id="group-info" style="display: none; background: rgba(0, 212, 255, 0.1); padding: 8px; border-radius: 4px; margin: 10px 0;">
+        <span style="color: #00D4FF;">ℹ️ Этот блок объединён с соседними</span>
+      </div>
+      
+      <div id="view-price-wrap" class="hidden">
+        <p>Цена: <span id="view-price">?</span> TON</p>
+      </div>
       <div class="modal-footer">
-        <button id="sell-pixel">Продать</button>
+        <button id="view-close">Закрыть</button>
+        <button id="sell-pixel" style="display: none;">Продать</button>
       </div>
     </div>
   </div>
   <div id="confirm-modal" class="modal hidden">
     <div class="modal-content">
-      <span class="modal-close" id="confirm-close">×</span>
-      <h2>Подтверждение</h2>
-      <p id="confirm-message"></p>
-      <p id="confirm-price"></p>
-      <input type="text" id="confirm-username" placeholder="@username или @channel" style="display: none;">
+      <h2><span id="confirm-message"></span></h2>
+      <p><span id="confirm-price"></span></p>
+      <input id="confirm-username" placeholder="@username или @channel" style="display: none;" />
       <div class="modal-footer">
         <button id="confirm-yes">Да</button>
         <button id="confirm-no">Нет</button>
+        <button id="confirm-close">Закрыть</button>
       </div>
     </div>
   </div>
-  <div id="editor-modal" class="modal hidden">
-    <div class="modal-content">
-      <h2>Редактировать изображение</h2>
-      <input type="file" id="editor-image-upload" accept="image/*">
-      <canvas id="editor-canvas"></canvas>
+  
+  <!-- Новый редактор изображений -->
+  <div id="image-editor-modal" class="modal hidden">
+    <div class="modal-content" style="width: 500px; max-width: 95vw;">
+      <h2>🖼️ Редактор изображения</h2>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 13px; color: #aaa;">
+        <span>Область: <span id="editor-dimensions">-</span></span>
+        <span>Блоков: <span id="editor-pixels-count">0</span></span>
+      </div>
+      
+      <div style="border: 1px solid #00D4FF; border-radius: 4px; padding: 10px; margin-bottom: 15px; background: rgba(0, 0, 0, 0.3);">
+        <canvas id="editor-canvas" style="width: 100%; max-width: 400px; height: auto; display: block; margin: 0 auto; cursor: grab;"></canvas>
+      </div>
+      
+      <input type="file" id="editor-file-input" accept="image/*" style="display: none;" />
+      <button onclick="document.getElementById('editor-file-input').click()" style="width: 100%; margin-bottom: 10px;">
+        📁 Загрузить изображение
+      </button>
+      
+      <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+        <button id="editor-reset" style="flex: 1; background: #444;">🔄 Сброс</button>
+        <button onclick="if(imageEditor && imageEditor.image) { imageEditor.scale *= 1.2; redrawCanvas(); }" style="flex: 1; background: #444;">🔍+ Увеличить</button>
+        <button onclick="if(imageEditor && imageEditor.image) { imageEditor.scale *= 0.8; redrawCanvas(); }" style="flex: 1; background: #444;">🔍- Уменьшить</button>
+      </div>
+      
+      <div style="background: rgba(0, 212, 255, 0.1); padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 12px;">
+        <strong>💡 Как использовать:</strong><br>
+        • Загрузите изображение кнопкой выше<br>
+        • Перетаскивайте мышью для позиционирования<br>
+        • Колесико мыши для масштабирования<br>
+        • Сетка показывает границы блоков<br>
+        • Нажмите "Применить" для сохранения
+      </div>
+      
       <div class="modal-footer">
-        <button id="editor-save">Сохранить</button>
-        <button id="editor-cancel">Отмена</button>
+        <button id="editor-save" style="background: #00D4FF; color: #000;">✅ Применить к блокам</button>
+        <button id="editor-close">Закрыть</button>
       </div>
     </div>
   </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/6.0.3/fabric.min.js"></script>
+  
   <script src="script.js"></script>
 </body>
 </html>
