@@ -1,17 +1,10 @@
 document.getElementById('purchase-self').onclick = async () => {
     const id = parseInt(document.getElementById('purchase-id').textContent);
     const category = document.getElementById('category-select').value;
-    const shouldMerge = document.getElementById('merge-checkbox')?.checked || false;
     const owner = defaultOwner;
     
-    // Рассчитываем цену с учетом объединения
+    // Базовая цена
     let totalPrice = pixelData[id]?.salePrice || defaultPrice;
-    if (shouldMerge) {
-      const mergeOpp = checkMergeOpportunities(id, owner);
-      if (mergeOpp.canMerge) {
-        totalPrice += mergeOpp.cost;
-      }
-    }
     
     await buyPixel(id, totalPrice);
     const pixel = document.querySelector(`.pixel[data-id='${id}']`);
@@ -29,9 +22,9 @@ document.getElementById('purchase-self').onclick = async () => {
       date: new Date().toLocaleString()
     };
     
-    // Обрабатываем объединение
-    if (shouldMerge) {
-      const neighbors = getOwnerNeighbors(id, owner);
+    // Проверяем соседние пиксели для автоматического объединения
+    const neighbors = getOwnerNeighbors(id, owner);
+    if (neighbors.length > 0) {
       const allPixels = [id, ...neighbors];
       const groupId = createOrUpdateGroup(allPixels, owner);
       
@@ -558,31 +551,6 @@ document.getElementById('purchase-self').onclick = async () => {
     });
   }
 
-  function findConnectedPixels(startId, owner) {
-    const visited = new Set();
-    const stack = [startId];
-    const connected = [];
-    
-    while (stack.length > 0) {
-      const current = stack.pop();
-      if (visited.has(current)) continue;
-      
-      visited.add(current);
-      const currentData = pixelData[current];
-      
-      if (currentData && currentData.owner === owner) {
-        connected.push(current);
-        getNeighbors(current).forEach(neighbor => {
-          if (!visited.has(neighbor)) {
-            stack.push(neighbor);
-          }
-        });
-      }
-    }
-    
-    return connected;
-  }
-
   function createOrUpdateGroup(pixelIds, owner) {
     // Находим минимальный ID для использования как ключ группы
     const groupId = Math.min(...pixelIds);
@@ -849,10 +817,6 @@ document.getElementById('purchase-self').onclick = async () => {
     document.querySelectorAll(".modal").forEach(m => m.classList.add("hidden"));
     document.getElementById("purchase-username").value = "";
     document.getElementById("confirm-username").value = "";
-    
-    // Скрываем элементы объединения
-    const mergeSection = document.getElementById("merge-section");
-    if (mergeSection) mergeSection.style.display = "none";
   }
 
   function calculateTotal(ids) {
@@ -896,22 +860,8 @@ document.getElementById('purchase-self').onclick = async () => {
           const data = pixelData[id] || { id, salePrice: defaultPrice };
           pixelData[id] = data;
           
-          // Проверяем возможности объединения
-          const owner = tonConnectUI.wallet?.account.address || defaultOwner;
-          const mergeOpp = checkMergeOpportunities(id, owner);
-          
           document.getElementById('purchase-id').textContent = id;
           document.getElementById('purchase-price').textContent = data.salePrice;
-          
-          // Показываем секцию объединения если есть соседи
-          const mergeSection = document.getElementById('merge-section');
-          if (mergeOpp.canMerge) {
-            mergeSection.style.display = 'block';
-            document.getElementById('merge-info').textContent = mergeOpp.message;
-            document.getElementById('merge-checkbox').checked = false;
-          } else {
-            mergeSection.style.display = 'none';
-          }
           
           document.getElementById('purchase-modal').classList.remove('hidden');
         } else {
@@ -1155,6 +1105,7 @@ document.getElementById('purchase-self').onclick = async () => {
       await buyPixel(id);
       const pixel = document.querySelector(`.pixel[data-id='${id}']`);
       if (pixel) {
+        pixel.classList.add('taken', 'owner-group');
         pixel.classList.add('star-explosion');
         setTimeout(() => pixel.classList.remove('star-explosion'), 800);
       }
@@ -1169,8 +1120,16 @@ document.getElementById('purchase-self').onclick = async () => {
       date: now
     };
     
-    updatePixelBorders(id);
-    getNeighbors(id).forEach(neighborId => updatePixelBorders(neighborId));
+    // Проверяем соседние пиксели для автоматического объединения
+    const neighbors = getOwnerNeighbors(id, username);
+    if (neighbors.length > 0) {
+      const allPixels = [id, ...neighbors];
+      const groupId = createOrUpdateGroup(allPixels, username);
+      
+      setTimeout(() => {
+        mergePixelGroup(groupId);
+      }, 1000);
+    }
     
     localStorage.setItem('takenPixels', JSON.stringify(savedTaken));
     localStorage.setItem('pixelData', JSON.stringify(pixelData));

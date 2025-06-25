@@ -148,9 +148,11 @@ button:hover {
 
 .pixel.selected {
   outline: none;
+  background: linear-gradient(135deg, #2a2a3a 0%, #3a3a4a 100%);
   box-shadow: 0 0 0 0.3px #B266FF,
               0 0 4px rgba(178, 102, 255, 0.8), 
-              0 0 8px rgba(255, 102, 204, 0.6);
+              0 0 8px rgba(255, 102, 204, 0.6),
+              inset 0 0 5px rgba(178, 102, 255, 0.3);
   transition: all 0.3s ease;
   z-index: 1;
   border-radius: 1px;
@@ -161,12 +163,14 @@ button:hover {
   0%, 100% {
     box-shadow: 0 0 0 0.3px #B266FF,
                 0 0 4px rgba(178, 102, 255, 0.8), 
-                0 0 8px rgba(255, 102, 204, 0.6);
+                0 0 8px rgba(255, 102, 204, 0.6),
+                inset 0 0 5px rgba(178, 102, 255, 0.3);
   }
   50% {
     box-shadow: 0 0 0 0.4px #FF66CC,
                 0 0 6px rgba(178, 102, 255, 1), 
-                0 0 12px rgba(255, 102, 204, 0.8);
+                0 0 12px rgba(255, 102, 204, 0.8),
+                inset 0 0 8px rgba(255, 102, 204, 0.4);
   }
 }
 
