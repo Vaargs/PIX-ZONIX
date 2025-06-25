@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let pixelGroups = JSON.parse(localStorage.getItem("pixelGroups")) || {}; // Новое: группы пикселей
   let imageEditor = null; // Редактор изображений
   let selectedPixelsForImage = []; // Пиксели для редактора изображений
+  let focusedPixel = null; // Текущий фокусированный пиксель
   let selectionMode = false;
   let selectedPixels = [];
   let scale = 1;
@@ -33,6 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Новые функции для редактора изображений
   function openImageEditor(pixels) {
+    if (pixels.length === 0) {
+      alert("Выберите хотя бы один пиксель.");
+      return;
+    }
+    
     selectedPixelsForImage = pixels;
     
     // Вычисляем размеры области
@@ -379,9 +385,93 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     pixelGroups[groupId].pixels = [...new Set([...pixelGroups[groupId].pixels, ...pixelIds])];
+    
+    // Автоматически объединяем если больше одного пикселя
+    if (pixelGroups[groupId].pixels.length > 1) {
+      pixelGroups[groupId].merged = true;
+    }
+    
     localStorage.setItem('pixelGroups', JSON.stringify(pixelGroups));
     
     return groupId;
+  }
+
+  function applyOwnerGroupStyling(pixelIds, owner) {
+    pixelIds.forEach(pixelId => {
+      const pixel = document.querySelector(`.pixel[data-id='${pixelId}']`);
+      if (pixel) {
+        pixel.classList.add('owner-group');
+        if (pixelIds.length > 1) {
+          pixel.classList.add('unified-area');
+        }
+      }
+    });
+  }
+
+  function mergePixelGroup(groupId) {
+    if (!pixelGroups[groupId]) return;
+    
+    const group = pixelGroups[groupId];
+    group.merged = true;
+    
+    // Применяем стили объединения
+    group.pixels.forEach(pixelId => {
+      const pixel = document.querySelector(`.pixel[data-id='${pixelId}']`);
+      if (pixel) {
+        pixel.classList.add('merged', 'unified-area');
+      }
+    });
+    
+    // Убираем внутренние границы
+    removeInternalBorders(group.pixels);
+    
+    // Если есть изображение, растягиваем его на всю группу
+    const mainPixelData = pixelData[groupId];
+    if (mainPixelData && mainPixelData.content) {
+      applyImageToGroup(groupId, mainPixelData.content);
+    }
+    
+    localStorage.setItem('pixelGroups', JSON.stringify(pixelGroups));
+  }
+
+  function removeInternalBorders(pixelIds) {
+    pixelIds.forEach(pixelId => {
+      const pixel = document.querySelector(`.pixel[data-id='${pixelId}']`);
+      if (pixel) {
+        const neighbors = getNeighbors(pixelId);
+        const sameOwnerNeighbors = neighbors.filter(nId => pixelIds.includes(nId));
+        
+        if (sameOwnerNeighbors.length > 0) {
+          // Убираем все внутренние границы
+          pixel.style.boxShadow = 'none';
+          pixel.style.border = 'none';
+        }
+      }
+    });
+    
+    // Добавляем внешние границы только по периметру группы
+    addGroupBorder(pixelIds);
+  }
+
+  function addGroupBorder(pixelIds) {
+    const borderPixels = new Set();
+    
+    pixelIds.forEach(pixelId => {
+      const neighbors = getNeighbors(pixelId);
+      const hasExternalNeighbor = neighbors.some(nId => !pixelIds.includes(nId));
+      
+      if (hasExternalNeighbor) {
+        borderPixels.add(pixelId);
+      }
+    });
+    
+    // Применяем границу только к внешним пикселям группы
+    borderPixels.forEach(pixelId => {
+      const pixel = document.querySelector(`.pixel[data-id='${pixelId}']`);
+      if (pixel) {
+        pixel.style.boxShadow = '0 0 0 0.1px rgba(0, 212, 255, 1)';
+      }
+    });
   }
 
   function mergePixelGroup(groupId) {
@@ -611,6 +701,9 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           
           document.getElementById('purchase-modal').classList.remove('hidden');
+        } else {
+          // Если пиксель уже куплен, открываем редактор изображения для него
+          openImageEditor([id]);
         }
       });
       
@@ -678,6 +771,12 @@ document.addEventListener('DOMContentLoaded', () => {
     openImageEditor(selectedPixels);
   };
 
+  document.getElementById('edit-single-pixel').onclick = () => {
+    const id = parseInt(document.getElementById('view-id').textContent);
+    closeAllModals();
+    openImageEditor([id]);
+  };
+
   document.getElementById('confirm-yes').onclick = async () => {
     const mode = document.getElementById('confirm-modal').dataset.mode;
     const username = document.getElementById('confirm-username').value.trim() || defaultOwner;
@@ -709,25 +808,25 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
     
-    // Создаем группу и проверяем автообъединение
+    // Применяем общую подсветку для группы
+    if (selectedPixels.length >= 1) {
+      applyOwnerGroupStyling(selectedPixels, owner);
+    }
+    
+    // Создаем группу и автоматически объединяем если больше одного пикселя
     if (selectedPixels.length > 1) {
       const groupId = createOrUpdateGroup(selectedPixels, owner);
       
-      // Автоматически объединяем если все пиксели соседние
-      const connectedPixels = findConnectedPixels(selectedPixels[0], owner);
-      if (connectedPixels.length === selectedPixels.length) {
-        setTimeout(() => mergePixelGroup(groupId), 1000);
-      }
+      // Небольшая задержка для красивой анимации
+      setTimeout(() => {
+        mergePixelGroup(groupId);
+      }, 1000);
     }
-    
-    // Обновляем границы для всех затронутых пикселей
-    selectedPixels.forEach(id => {
-      updatePixelBorders(id);
-      getNeighbors(id).forEach(neighborId => updatePixelBorders(neighborId));
-    });
     
     localStorage.setItem('takenPixels', JSON.stringify(savedTaken));
     localStorage.setItem('pixelData', JSON.stringify(pixelData));
+    
+    // Очищаем выделение
     selectedPixels.forEach(id => {
       const p = document.querySelector(`.pixel[data-id='${id}']`);
       if (p) p.classList.remove('selected');
