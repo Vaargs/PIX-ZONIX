@@ -3,41 +3,46 @@ document.getElementById('purchase-self').onclick = async () => {
     const category = document.getElementById('category-select').value;
     const owner = defaultOwner;
     
+    console.log('Покупка пикселя:', id); // Отладка
+    
     // Базовая цена
     let totalPrice = pixelData[id]?.salePrice || defaultPrice;
     
-    await buyPixel(id, totalPrice);
-    const pixel = document.querySelector(`.pixel[data-id='${id}']`);
-    if (pixel) {
-      pixel.classList.add('taken', 'owner-group');
-      pixel.classList.add('star-explosion');
-      setTimeout(() => pixel.classList.remove('star-explosion'), 800);
-    }
-    
-    pixelData[id] = {
-      ...pixelData[id],
-      category: category,
-      taken: true,
-      owner: owner,
-      date: new Date().toLocaleString()
-    };
-    
-    // Проверяем соседние пиксели для автоматического объединения
-    const neighbors = getOwnerNeighbors(id, owner);
-    if (neighbors.length > 0) {
-      const allPixels = [id, ...neighbors];
-      const groupId = createOrUpdateGroup(allPixels, owner);
+    const success = await buyPixel(id, totalPrice);
+    if (success) {
+      const pixel = document.querySelector(`.pixel[data-id='${id}']`);
+      if (pixel) {
+        pixel.classList.add('taken', 'owner-group');
+        pixel.classList.add('star-explosion');
+        setTimeout(() => pixel.classList.remove('star-explosion'), 800);
+      }
       
-      setTimeout(() => {
-        mergePixelGroup(groupId);
-      }, 1000);
+      if (!pixelData[id]) pixelData[id] = {};
+      pixelData[id] = {
+        ...pixelData[id],
+        category: category || 'Не указана',
+        taken: true,
+        owner: owner,
+        date: new Date().toLocaleString()
+      };
+      
+      // Проверяем соседние пиксели для автоматического объединения
+      const neighbors = getOwnerNeighbors(id, owner);
+      if (neighbors.length > 0) {
+        const allPixels = [id, ...neighbors];
+        const groupId = createOrUpdateGroup(allPixels, owner);
+        
+        setTimeout(() => {
+          mergePixelGroup(groupId);
+        }, 1000);
+      }
+      
+      localStorage.setItem('pixelData', JSON.stringify(pixelData));
+      closeAllModals();
+      
+      // Показываем сообщение о возможности загрузки изображения
+      alert('🎉 Пиксель куплен! Теперь вы можете загрузить картинку в купленные пиксели через двойной клик или кнопку "Редактор".');
     }
-    
-    localStorage.setItem('pixelData', JSON.stringify(pixelData));
-    closeAllModals();
-    
-    // Показываем сообщение о возможности загрузки изображения
-    alert('🎉 Пиксель куплен! Теперь вы можете загрузить картинку в купленные пиксели через двойной клик или кнопку "Редактор".');
   };document.addEventListener('DOMContentLoaded', () => {
   const grid = document.getElementById("pixel-grid");
   const wrapper = document.getElementById("pixel-wrapper");
@@ -74,6 +79,8 @@ document.getElementById('purchase-self').onclick = async () => {
 
   // Новые функции для редактора изображений
   function openImageEditor(pixels) {
+    console.log('Вызов openImageEditor с пикселями:', pixels); // Отладка
+    
     if (pixels.length === 0) {
       alert("Выберите хотя бы один пиксель.");
       return;
@@ -99,6 +106,7 @@ document.getElementById('purchase-self').onclick = async () => {
     // Инициализируем canvas
     initImageEditor(width * 50, height * 50); // Масштабируем для удобства редактирования
     
+    console.log('Показываем редактор изображений'); // Отладка
     document.getElementById('image-editor-modal').classList.remove('hidden');
   }
 
@@ -650,7 +658,7 @@ document.getElementById('purchase-self').onclick = async () => {
     borderPixels.forEach(pixelId => {
       const pixel = document.querySelector(`.pixel[data-id='${pixelId}']`);
       if (pixel) {
-        pixel.style.boxShadow = '0 0 0 0.1px rgba(0, 212, 255, 1)';
+        pixel.style.boxShadow = 'inset 0 0 4px rgba(255, 68, 68, 0.8)';
       }
     });
   }
@@ -936,8 +944,11 @@ document.getElementById('purchase-self').onclick = async () => {
 
   document.getElementById('edit-single-pixel').onclick = () => {
     const id = parseInt(document.getElementById('view-id').textContent);
+    console.log('Открытие редактора для пикселя:', id); // Отладка
     closeAllModals();
-    openImageEditor([id]);
+    setTimeout(() => {
+      openImageEditor([id]);
+    }, 100); // Небольшая задержка после закрытия модального окна
   };
 
   document.getElementById('confirm-yes').onclick = async () => {
@@ -950,17 +961,22 @@ document.getElementById('purchase-self').onclick = async () => {
     const now = new Date().toLocaleString();
     const owner = mode === 'gift' ? username : defaultOwner;
     
+    console.log('Массовая покупка пикселей:', selectedPixels); // Отладка
+    
     // Покупаем каждый пиксель по очереди
     for (const id of selectedPixels) {
       if (!savedTaken.includes(id)) {
-        await buyPixel(id);
-        const pixel = document.querySelector(`.pixel[data-id='${id}']`);
-        if (pixel) {
-          pixel.classList.add('taken');
-          pixel.classList.add('star-explosion');
-          setTimeout(() => pixel.classList.remove('star-explosion'), 800);
+        const success = await buyPixel(id);
+        if (success) {
+          const pixel = document.querySelector(`.pixel[data-id='${id}']`);
+          if (pixel) {
+            pixel.classList.add('taken');
+            pixel.classList.add('star-explosion');
+            setTimeout(() => pixel.classList.remove('star-explosion'), 800);
+          }
         }
       }
+      if (!pixelData[id]) pixelData[id] = {};
       pixelData[id] = {
         ...pixelData[id],
         taken: true,
